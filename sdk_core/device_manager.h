@@ -39,6 +39,7 @@
 #include <map>
 #include <mutex>
 #include <string.h>
+#include <cstdint>
 
 #ifdef WIN32
 #include <winsock2.h>
@@ -56,32 +57,35 @@ namespace livox {
 namespace lidar {
 
 static const size_t kMaxBufferSize = 8192;
-const uint8_t kSdkVer = 3;
+const uint8_t kSdkVer              = 3;
 
 class Protector {};
 
 struct Command {
- public:
-  Command() : packet(), handle(0), lidar_ip(""), time_out(KDefaultTimeOut), cb(nullptr) {}
-  Command (uint32_t seq_num, 
-           uint16_t cmd_id,
-           uint8_t cmd_type,
-           uint8_t sender_type,
-           uint8_t* data,
-           uint16_t data_len,
-           uint32_t handle = 0,
-           std::string lidar_ip = "",
-           std::shared_ptr<CommandCallback> cb = nullptr) : packet(), handle(handle), lidar_ip(lidar_ip), time_out(KDefaultTimeOut), cb(cb) {
-    packet.protocol = kLidarSdk;
-    packet.version = kSdkVer;
-    packet.seq_num = seq_num;
-    packet.cmd_id = cmd_id;
-    packet.cmd_type = cmd_type;
-    packet.sender_type = sender_type;
-    packet.data = data;
-    packet.data_len = data_len;
+public:
+  Command() : packet(), handle(0), lidar_ip(""), time_out(KDefaultTimeOut), cb(nullptr) {
   }
- public:
+  Command(uint32_t seq_num,
+          uint16_t cmd_id,
+          uint8_t cmd_type,
+          uint8_t sender_type,
+          uint8_t *data,
+          uint16_t data_len,
+          uint32_t handle                     = 0,
+          std::string lidar_ip                = "",
+          std::shared_ptr<CommandCallback> cb = nullptr)
+  : packet(), handle(handle), lidar_ip(lidar_ip), time_out(KDefaultTimeOut), cb(cb) {
+    packet.protocol    = kLidarSdk;
+    packet.version     = kSdkVer;
+    packet.seq_num     = seq_num;
+    packet.cmd_id      = cmd_id;
+    packet.cmd_type    = cmd_type;
+    packet.sender_type = sender_type;
+    packet.data        = data;
+    packet.data_len    = data_len;
+  }
+
+public:
   CommPacket packet;
   uint32_t handle;
   std::string lidar_ip;
@@ -90,46 +94,57 @@ struct Command {
 };
 
 class DeviceManager : public IOLoop::IOLoopDelegate {
- private:
+private:
   DeviceManager();
-  DeviceManager(const DeviceManager& other) = delete;
-  DeviceManager& operator=(const DeviceManager& other) = delete;
- public:
+  DeviceManager(const DeviceManager &other)            = delete;
+  DeviceManager &operator=(const DeviceManager &other) = delete;
+
+public:
   typedef std::chrono::steady_clock::time_point TimePoint;
   void Destory();
   ~DeviceManager();
-  static DeviceManager& GetInstance();
+  static DeviceManager &GetInstance();
 
-  bool Init(const std::string& host_ip, const LivoxLidarLoggerCfgInfo* log_cfg_info);
+  bool Init(const std::string &host_ip, const LivoxLidarLoggerCfgInfo *log_cfg_info);
 
-  bool Init(std::shared_ptr<std::vector<LivoxLidarCfg>>& lidars_cfg_ptr,
-      std::shared_ptr<std::vector<LivoxLidarCfg>>& custom_lidars_cfg_ptr,
-      std::shared_ptr<LivoxLidarLoggerCfg> lidar_logger_cfg_ptr,
-      std::shared_ptr<LivoxLidarSdkFrameworkCfg>& sdk_framework_cfg_ptr);
+  bool Init(std::shared_ptr<std::vector<LivoxLidarCfg>> &lidars_cfg_ptr,
+            std::shared_ptr<std::vector<LivoxLidarCfg>> &custom_lidars_cfg_ptr,
+            std::shared_ptr<LivoxLidarLoggerCfg> lidar_logger_cfg_ptr,
+            std::shared_ptr<LivoxLidarSdkFrameworkCfg> &sdk_framework_cfg_ptr);
 
-  void HandleDetectionData(uint32_t handle, DetectionData* detection_data, bool is_get_loader_mode, bool is_load_mode);
+  void HandleDetectionData(uint32_t handle, DetectionData *detection_data, bool is_get_loader_mode, bool is_load_mode);
 
-  int SendCommand(const uint8_t dev_type, const uint32_t handle, const std::vector<uint8_t>& buf, 
-    const int16_t size, const struct sockaddr *addr, socklen_t addrlen);
-  int SendLoggerCommand(const uint8_t dev_type, const uint32_t handle, const std::vector<uint8_t>& buf, 
-    const int16_t size, const struct sockaddr *addr, socklen_t addrlen);
-  
-  static void GetLivoxLidarInternalInfoCallback(livox_status status, uint32_t handle,
-        LivoxLidarDiagInternalInfoResponse* response, void* client_data);
+  int SendCommand(const uint8_t dev_type,
+                  const uint32_t handle,
+                  const std::vector<uint8_t> &buf,
+                  const int16_t size,
+                  const struct sockaddr *addr,
+                  socklen_t addrlen);
+  int SendLoggerCommand(const uint8_t dev_type,
+                        const uint32_t handle,
+                        const std::vector<uint8_t> &buf,
+                        const int16_t size,
+                        const struct sockaddr *addr,
+                        socklen_t addrlen);
+
+  static void GetLivoxLidarInternalInfoCallback(livox_status status,
+                                                uint32_t handle,
+                                                LivoxLidarDiagInternalInfoResponse *response,
+                                                void *client_data);
   void UpdateViewLidarCfgCallback(const uint32_t handle);
 
   void OnData(socket_t sock, void *);
   void OnTimer(TimePoint now);
-  
+
   std::shared_ptr<LivoxLidarSdkFrameworkCfg> sdk_framework_cfg_ptr_;
 
- private:
+private:
   void GetLivoxLidarInternalInfo(const uint32_t handle);
-  void AddViewLidar(const uint32_t handle, LivoxLidarDiagInternalInfoResponse* response);
-  void CreateViewDataChannel(const ViewLidarIpInfo& view_lidar_info);
+  void AddViewLidar(const uint32_t handle, LivoxLidarDiagInternalInfoResponse *response);
+  void CreateViewDataChannel(const ViewLidarIpInfo &view_lidar_info);
 
   void GetLidarConfigMap();
-  void InitDevTypeTable(const LivoxLidarCfg& lidar_cfg);
+  void InitDevTypeTable(const LivoxLidarCfg &lidar_cfg);
 
   bool CreateIOThread();
   bool CreateDetectionIOThread();
@@ -138,20 +153,22 @@ class DeviceManager : public IOLoop::IOLoopDelegate {
 
   bool CreateChannel();
   bool CreateDetectionChannel();
-  bool CreateDataChannel(const HostNetInfo& host_net_info);
-  bool CreateCommandChannel(const uint8_t dev_type, const HostNetInfo& host_net_info);
-  bool CreateCmdSocketAndAddDelegate(const uint8_t dev_type, const std::string& host_ip, const uint16_t port, const HostSocketType type);
-  bool CreateDataSocketAndAddDelegate(const std::string& host_ip, const uint16_t port, const std::string& multicast_ip);
+  bool CreateDataChannel(const HostNetInfo &host_net_info);
+  bool CreateCommandChannel(const uint8_t dev_type, const HostNetInfo &host_net_info);
+  bool CreateCmdSocketAndAddDelegate(const uint8_t dev_type, const std::string &host_ip, const uint16_t port, const HostSocketType type);
+  bool CreateDataSocketAndAddDelegate(const std::string &host_ip, const uint16_t port, const std::string &multicast_ip);
 
   void DetectionLidars();
   void Detection();
 
   uint8_t GetDeviceType(const uint32_t handle);
-  void IsLidarData(const uint32_t handle, const uint16_t lidar_port, uint8_t& dev_type);
- private:
-  bool GetCmdChannel(const uint8_t dev_type, const uint32_t handle, socket_t& sock);
-  bool GetLoggerCmdChannel(const uint8_t dev_type, const uint32_t handle, socket_t& sock);
- private:
+  void IsLidarData(const uint32_t handle, const uint16_t lidar_port, uint8_t &dev_type);
+
+private:
+  bool GetCmdChannel(const uint8_t dev_type, const uint32_t handle, socket_t &sock);
+  bool GetLoggerCmdChannel(const uint8_t dev_type, const uint32_t handle, socket_t &sock);
+
+private:
   std::shared_ptr<std::vector<LivoxLidarCfg>> lidars_cfg_ptr_;
   std::shared_ptr<std::vector<LivoxLidarCfg>> custom_lidars_cfg_ptr_;
   std::shared_ptr<LivoxLidarLoggerCfg> lidar_logger_cfg_ptr_;
@@ -162,7 +179,7 @@ class DeviceManager : public IOLoop::IOLoopDelegate {
   socket_t detection_socket_;
   socket_t detection_broadcast_socket_;
 
-  //socket_t detection_socket2_;
+  // socket_t detection_socket2_;
 
   std::vector<socket_t> socket_vec_;
   std::mutex mutex_cmd_channel_;
@@ -182,7 +199,7 @@ class DeviceManager : public IOLoop::IOLoopDelegate {
 
   std::unique_ptr<CommPort> comm_port_;
 
-  std::atomic<bool> is_stop_detection_{false};
+  std::atomic<bool> is_stop_detection_{ false };
   std::shared_ptr<std::thread> detection_thread_;
 
   std::mutex lidars_dev_type_mutex_;
@@ -190,7 +207,7 @@ class DeviceManager : public IOLoop::IOLoopDelegate {
 
   bool is_view_;
   std::string detection_host_ip_;
-  
+
   std::mutex view_device_mutex_;
   std::map<uint32_t, ViewDevice> view_devices_;
 
@@ -204,4 +221,3 @@ class DeviceManager : public IOLoop::IOLoopDelegate {
 } // namespace livox
 
 #endif // LIVOX_DEVICE_MANAGER_H_
-
